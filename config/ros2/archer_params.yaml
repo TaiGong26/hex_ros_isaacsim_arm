@@ -1,0 +1,29 @@
+/**/hex_ros_isaacsim_archer_y6:
+  ros__parameters:
+    # control loop rate [hz] — torque published to the bridge
+    ctrl_rate: 1000.0
+
+    # robot state forward rate [hz] (decimated from ctrl_rate)
+    rate_state: 500.0
+
+    # frame id used in the forwarded state header
+    robot_frame_id: "base_link"
+
+    # grip type: "gr100" (1-DoF) or "empty" (0-DoF)
+    robot_grip_type: "empty"
+
+    # URDF for compensation / FK / IK (resolved by launch from
+    # hex_ros_urdf_archer_y6; empty string triggers ament lookup)
+    urdf_path: ""
+
+    # bridge topics — every bridge topic this node subscribes to is a param
+    bridge_state_topic: "/joint_states"
+    bridge_cmd_topic: "/hex_arm_cmd"
+
+    # forwarded header time source: "sim" (bridge stamp) or "ros" (ROS now)
+    time_source: "sim"
+
+    # joint-name prefixes used to split the bridge joint_states into
+    # arm / grip groups (dynamic joint name acquisition)
+    arm_joint_prefix: "arm_joint_"
+    grip_joint_prefix: "grip_joint_"

@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>hex_ros_isaacsim_arm</name>
+  <version>0.1.0</version>
+  <description>
+    Isaac Sim bridge-forwarding package for the archer manipulator.
+    Subscribes to the bridge joint_states, computes the control torque locally
+    (MIT/JNT/EE + grip MIT/JNT/TAU, mirroring the mujoco sim torque laws) and
+    publishes a single torque command back to the bridge.
+  </description>
+  <maintainer email="thetaigon@qq.com">hexfellow</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>hex_ros_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <!-- hex_util_msg / hex_util_ros are pip dependencies (see README_CN.md) -->
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
