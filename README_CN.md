@@ -1,5 +1,6 @@
-# hex_ros_robot_arm
+# hex_ros_isaacsim_arm
 **中文** | [English](README.md)
+
 ## 目录
 
 - [1. 包的简介](#1-包的简介)
@@ -8,134 +9,116 @@
 - [4. 控制模式](#4-控制模式)
 - [5. 参数说明](#5-参数说明)
 - [6. 依赖关系](#6-依赖关系)
-- [7. 快速使用](#7-快速使用)
+- [7. Isaacsim Action Graph](#7-isaacsim-action-graph)
+- [8. 快速使用](#8-快速使用)
+- [9. 常见问题](#9-常见问题)
 
 ---
 
 ## 1. 包的简介
 
-这是 **HEXFELLOW** 机械臂的 **ROS 驱动包**
+`hex_ros_isaacsim_arm` 是 Isaac Sim Archer Y6 机械臂的 ROS 2 Bridge 转发包。
 
-- **Archer Y6** — 6 自由度机械臂 + 夹爪，支持 MIT/位置/末端位姿控制
-- **Firefly Y6** — 6 自由度机械臂 + 夹爪，与 Archer 结构一致
-- **Hello Y6** — 6 自由度只读机械臂（state-only），支持摇杆手柄和 RGB LED
+本包负责：
 
-每个节点通过 WebSocket 连接真实控制器，订阅控制指令，发布机械臂实时状态。同时支持 **ROS 1** 和 **ROS 2**。
+- 订阅上游发布的 `manip_ctrl` 机械臂和夹爪控制指令；
+- 订阅 Isaac Sim Bridge 发布的关节状态；
+- 将支持的控制指令转发为 Isaac Sim Bridge 使用的 `sensor_msgs/msg/JointState` 命令；
+- 通过参数指定状态话题和命令话题。
+
+本包包含 Archer Y6 节点，并支持以下夹爪配置：
+
+- `empty`：不使用夹爪；
+- `gp80`：使用 GP80 夹爪；
+- `gr100`：使用 GR100 夹爪。
+
+本包不连接真实机械臂控制器，也不负责发布真实机械臂驱动包中的 `manip_state`。
 
 ---
 
 ## 2. 包架构
 
+```text
+hex_ros_isaacsim_arm/
+├── config/ros2/
+│   └── archer_params.yaml
+├── launch/ros2/
+│   └── isaacsim_archer_y6.launch.py
+├── hex_ros_isaacsim_arm/
+│   ├── isaacsim_archer_y6.py
+│   └── utility/
+├── package.xml
+├── setup.py
+└── README_CN.md
 ```
-hex_ros_robot_arm/
-├── config/                        # 参数配置（每个节点独立）
-│   ├── ros1/
-│   │   ├── archer_params.yaml     #   Archer Y6 ROS 1 参数
-│   │   ├── firefly_params.yaml    #   Firefly Y6 ROS 1 参数
-│   │   └── hello_params.yaml      #   Hello Y6 ROS 1 参数
-│   └── ros2/
-│       ├── archer_params.yaml     #   Archer Y6 ROS 2 参数
-│       ├── firefly_params.yaml    #   Firefly Y6 ROS 2 参数
-│       └── hello_params.yaml      #   Hello Y6 ROS 2 参数
-├── launch/                        # 启动文件（每个节点独立）
-│   ├── ros1/
-│   │   ├── archer.launch          #   Archer Y6 ROS 1 启动
-│   │   ├── firefly.launch         #   Firefly Y6 ROS 1 启动
-│   │   └── hello.launch           #   Hello Y6 ROS 1 启动
-│   └── ros2/
-│       ├── archer.launch.py       #   Archer Y6 ROS 2 启动
-│       ├── firefly.launch.py      #   Firefly Y6 ROS 2 启动
-│       └── hello.launch.py        #   Hello Y6 ROS 2 启动
-├── hex_ros_robot_arm/             # 核心代码
-│   ├── robot_archer_y6.py         #   Archer Y6 主节点（控制循环 + ROS 接口）
-│   ├── robot_firefly_y6.py        #   Firefly Y6 主节点（控制循环 + ROS 接口）
-│   ├── robot_hello_y6.py          #   Hello Y6 主节点（只读控制循环 + ROS 接口）
-│   ├── test_ctrl.py               #   交互式测试节点（调试工具）
-│   ├── utility/                   #   公共 DataInterface（Archer / Firefly 共用）
-│   ├── hello_utils/               #   Hello Y6 DataInterface（只读 + 摇杆 + 灯色）
-│   └── test_utils/                #   测试用 DataInterface
-├── resource/                      # ament 资源文件
-├── test/                          # ROS 标准测试
-├── setup.py                       # Python 打包配置（4 个 entry_point）
-├── package.xml                    # ROS 包清单（双系统条件依赖）
-└── README.md                      # 英文文档
-```
+
+### 节点入口
+
+| 节点 | 可执行文件 | 作用 |
+|---|---|---|
+| Archer Y6 | `isaacsim_archer_y6` | 转发 Archer 机械臂和夹爪控制指令 |
 
 ---
 
 ## 3. 话题接口
 
-### Archer Y6 / Firefly Y6（标准机械臂 + 夹爪）
+| 方向 | 话题/参数 | 默认话题 | 类型 | 说明 |
+|---|---|---|---|---|
+| 订阅 | `manip_ctrl` | `manip_ctrl` | `hex_ros_msgs/msg/HexRosRoboManipCtrlStamped` | 机械臂和夹爪控制输入 |
+| 订阅 | `joint_state_topic` | `/joint_states` | `sensor_msgs/msg/JointState` | Isaac Sim Bridge 关节状态 |
+| 发布 | `joint_command_topic` | `/joint_command` | `sensor_msgs/msg/JointState` | Isaac Sim Bridge 关节命令 |
 
-| 方向 | 话题 | 类型 | 说明 |
-|------|------|------|------|
-| 订阅 | `manip_ctrl` | `hex_ros_msgs/(msg/)HexRosRoboManipCtrlStamped` | 机械臂 + 夹爪控制指令 |
-| 发布 | `manip_state` | `hex_ros_msgs/(msg/)HexRosRoboManipStateStamped` | 机械臂 + 夹爪状态反馈 |
-| 发布 | `joint_states` | `sensor_msgs/(msg/)JointState` | 7 个关节（6 臂 + 1 夹爪） |
-### Hello Y6（只读机械臂 + 摇杆手柄 + RGB LED）
+`joint_state_topic` 和 `joint_command_topic` 可以在 `config/ros2/archer_params.yaml` 中自定义。修改后，Isaac Sim Bridge 的状态发布和命令订阅话题必须与参数保持一致。
 
-| 方向 | 话题 | 类型 | 说明 |
-|------|------|------|------|
-| 发布 | `manip_state` | `hex_ros_msgs/(msg/)HexRosRoboManipStateStamped` | 机械臂状态反馈（夹爪为空） |
-| 发布 | `joint_states` | `sensor_msgs/(msg/)JointState` | 6 个臂关节（无夹爪） |
-| 发布 | `joy_state` | `hex_ros_msgs/(msg/)HexRosTeleopHandleStateStamped` | 摇杆手柄状态（axis_x/y、trigger、按钮 W/X/Y/Z） |
-| 订阅 | `color_cmd` | `std_msgs/(msg/)ColorRGBA` | RGB LED 颜色指令（float 0-1 → int 0-255） |
+### JointState 字段
 
-> [消息类型描述](https://github.com/hexfellow/hex_ros_msgs#public-apis)
+对于 `/joint_command`：
 
-### MIT 模式使用警告
-- 除非你知道什么是MIT模式，否则不要使用该模式
-- 使用不当可能导致机械臂剧烈运动甚至损坏设备
-
-> 确保在安全区域内运行，并随时准备急停
+- `name`：关节名称及其数组顺序；
+- `position`：关节位置目标；
+- `effort`：关节力矩或前馈力矩字段。
 
 ---
 
 ## 4. 控制模式
 
-### Archer Y6 / Firefly Y6
+### Arm
 
-**臂控制模式：** MIT 、JNT（位置）、EE（末端位姿）
+| 模式 | 状态 | 说明 |
+|---|---|---|
+| `JNT` | 支持 | 关节位置控制 |
+| `EE` | 支持 | 末端位姿控制 |
+| `MIT` | 不支持 | 输出 warning，不发布该控制命令 |
 
-**夹爪控制模式：** MIT 、JNT（位置）、TAU（力矩）
+### Gripper
 
-### Hello Y6
+| 模式 | 状态 | 说明 |
+|---|---|---|
+| `NONE` | 支持 | 空模式，清除当前保留控制指令 |
+| `JNT` | 支持 | 关节位置控制 |
+| `TAU` | 支持 | 力矩控制，最大绝对力矩为 `40 N·m` |
+| `MIT` | 不支持 | 输出 warning，不发布该控制命令 |
 
-**无控制模式。** Hello Y6 是只读（state-only）设备，不支持下发控制指令。
+`NONE` 是空模式，不代表额外发送一个位置或力矩控制目标。Arm 和 gripper 收到不支持的 MIT 控制时，不会自动转换为其他模式。
 
 ---
 
 ## 5. 参数说明
 
-### Archer Y6 / Firefly Y6
+参数文件：`config/ros2/archer_params.yaml`
 
 | 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `ctrl_rate` | 1000.0 | 主控制循环频率 [Hz] |
-| `rate_state` | 500.0 | 状态发布频率（从 ctrl_rate 降采样）[Hz] |
-| `robot_host` | 192.168.1.100 | 机器人控制器 IP 地址 |
-| `robot_port` | 8439 | WebSocket 端口 |
-| `robot_frame_id` | `base_link` | 状态消息中的坐标系 |
-| `robot_grip_type` | `empty` | 夹爪类型：`gp80`、`gr100`或 `empty`（无夹爪） |
-| `state_buffer_size` | 200 | 驱动状态缓冲区大小 |
-| `sens_ts` | `true` | 是否使用传感器硬件时间戳 |
+|---|---|---|
+| `ctrl_rate` | `1000.0` | 控制命令转发频率 [Hz] |
+| `use_sim_time` | `true` | 是否使用 ROS 仿真时间 |
+| `robot_grip_type` | `gr100` | 夹爪类型：`empty`、`gp80` 或 `gr100` |
+| `urdf_path` | `""` | Archer URDF 路径，用于 EE 控制模型 |
+| `joint_state_topic` | `/joint_states` | 可自定义的 Bridge 状态话题 |
+| `joint_command_topic` | `/joint_command` | 可自定义的 Bridge 命令话题 |
 
-### Hello Y6
+启动文件会为 `urdf_path` 提供 `hex_ros_urdf_archer_y6` 包中的 `empty.urdf` 路径覆盖值。如果直接运行节点或覆盖该参数，需要提供有效的 URDF 路径才能使用 EE 控制。
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `ctrl_rate` | 500.0 | 主控制循环频率 [Hz] |
-| `rate_state` | 100.0 | 状态发布频率（从 ctrl_rate 降采样）[Hz] |
-| `robot_host` | 192.168.1.100 | 机器人控制器 IP 地址 |
-| `robot_port` | 8439 | WebSocket 端口 |
-| `robot_frame_id` | `base_link` | 状态消息中的坐标系 |
-| `state_buffer_size` | 200 | 驱动状态缓冲区大小 |
-| `sens_ts` | `true` | 是否使用传感器硬件时间戳 |
-
-> Hello Y6 无 `robot_grip_type` 参数（不涉及电机夹爪控制）。
-
-
-> 默认提供ros时间；如果您需要硬件时间戳，可以通过`chs_state.jnt.header.stamp`获取
+> 如果 `use_sim_time` 为 `true`，需要在 Isaac Sim 中开启 `/clock` 话题。
 
 ---
 
@@ -143,78 +126,189 @@ hex_ros_robot_arm/
 
 ### Python 包
 
+本包使用 ROS 2 Python 环境和以下 Python 依赖：
+
 ```shell
-pip3 install 'hex-util-msg>=0.1.0a0'
-pip3 install 'hex-util-ros>=0.0.1a0'
-pip3 install 'hex-util-runtime>=0.0.0,<0.1.0'
-pip3 install 'hex-driver-robot>=0.0.1'
-pip3 install 'hex_util_msg>=0.1.0'
+pip3 install 'hex-util-msg>=0.1.0a4'
+pip3 install 'hex-util-ros>=0.0.1a6'
 ```
+
 
 ### ROS 包
 
+创建 ROS 2 工作空间并获取消息包和 Archer URDF 包：
+
 ```shell
+mkdir -p <your_ws>/src
+cd <your_ws>/src
 git clone https://github.com/hexfellow/hex_ros_msgs.git
-git clone https://github.com/hexfellow/hex_ros_robot_arm.git
+git clone https://github.com/hexfellow/hex_ros_urdf_archer_y6.git
+git clone https://github.com/hexfellow/hex_ros_isaacsim_arm.git
 ```
+
+### Isaac Sim ROS 2 Bridge
+
+Isaac Sim 侧需要启用 ROS 2 Bridge，并创建与本包参数一致的 `JointState` 状态发布和命令订阅接口。安装和启用方式请参考 Isaac Sim 官方文档：
+
+- [Isaac Sim ROS 2 Installation](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/install_ros.html)
+
+ROS 2 控制节点和 Isaac Sim Bridge 之间需要使用一致且可互通的通信配置：
+
+- `ROS_DOMAIN_ID` 应一致；
+- `RMW_IMPLEMENTATION` 应一致或处于兼容配置；
+- DDS discovery 所需的网络必须可达；
+- 跨 Docker 容器运行时，应使用可互通的容器网络；
+- 不要将通信节点限制在各自容器的 localhost。
+
+### URDF
+
+`urdf_path` 是 EE 控制使用的运行时模型路径。
+
+当没有有效的 URDF 路径，或 URDF 模型加载失败时：
+
+- 节点会输出 warning 或 error；
+- EE 控制不可用；
+- JNT arm 控制不依赖该 EE 模型，可以继续使用；
+- 夹爪控制不依赖 arm 的 EE 模型。
 
 ---
 
-## 7. 快速使用
+## 7. Isaacsim Action Graph
 
-### 1. 构建工作空间
+![Action Graph](./img/80d5a0cb2d9ced03a2dc84bb76663a84.png)
+
+---
+
+## 8. 快速使用
+
+### 1. 编译工作空间
 
 ```shell
-mkdir -p hex_ws/src
-cd hex_ws/src
-```
-
-### 2. 克隆包
-
-```shell
+mkdir -p <your_ws>/src
+cd <your_ws>/src
 git clone https://github.com/hexfellow/hex_ros_msgs.git
-git clone https://github.com/hexfellow/hex_ros_robot_arm.git
-```
+git clone https://github.com/hexfellow/hex_ros_urdf_archer_y6.git
+git clone https://github.com/hexfellow/hex_ros_isaacsim_arm.git
 
-### 3. 编译包
-
-**ROS 1：**
-
-```shell
-source /opt/ros/noetic/setup.bash
-cd hex_ws
-catkin_make
-source devel/setup.bash --extend
-```
-
-**ROS 2：**
-
-```shell
+cd <your_ws>
 source /opt/ros/humble/setup.bash
-cd hex_ws
-colcon build
+colcon build --symlink-install
 source install/setup.bash --extend
 ```
 
-### 4. 使用包
+### 2. 启动 Archer Bridge 节点
 
 ```shell
-# ROS 2 — Archer Y6
-ros2 launch hex_ros_robot_arm archer.launch.py \
-    robot_host:=192.168.1.100 robot_port:=8439 robot_grip_type:=empty
-
-# ROS 2 — Firefly Y6
-ros2 launch hex_ros_robot_arm firefly.launch.py \
-    robot_host:=192.168.1.100 robot_port:=8439 robot_grip_type:=empty
-
-# ROS 2 — Hello Y6（只读）
-ros2 launch hex_ros_robot_arm hello.launch.py \
-    robot_host:=192.168.1.100 robot_port:=8439
-
-# ROS 2 — Archer Y6（带测试节点）
-ros2 launch hex_ros_robot_arm archer.launch.py \
-    robot_host:=192.168.1.100 robot_port:=8439 robot_grip_type:=empty test:=true
+ros2 launch hex_ros_isaacsim_arm isaacsim_archer_y6.launch.py
 ```
 
-> 将 `robot_host` 和 `robot_port` 替换为实际机器人控制器的 IP 和端口。
-> 我们提供了test_ctrl节点作为示例，您可以参考该节点实现控制。
+### 3. 查看接口
+
+```shell
+ros2 node info /hex_ros_isaacsim_archer_y6
+ros2 topic list -t
+ros2 topic info /manip_ctrl -v
+ros2 topic info /joint_states -v
+ros2 topic info /joint_command -v
+ros2 topic echo /joint_states --once
+ros2 topic echo /joint_command --once
+```
+
+### 4. 发布 Arm EE 指令
+
+以下示例将末端位置设置为 `{0.3, 0.0, 0.3}` m，姿态使用单位四元数：
+
+```shell
+ros2 topic pub --rate 10 /manip_ctrl \
+  hex_ros_msgs/msg/HexRosRoboManipCtrlStamped \
+  '{header: {stamp: {sec: 0, nanosec: 0}, frame_id: "arm_link"}, manip_ctrl: {arm_ctrl: {ctrl_mode: 3, jnt: {pos: [], vel: [], eff: [], kp: [], kd: [], lim_vel: [1.0], lim_acc: [50.0]}, pose: {position: {x: 0.3, y: 0.0, z: 0.3}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}}, grip_ctrl: {ctrl_mode: 0, jnt: {pos: [], vel: [], eff: [], kp: [], kd: [], lim_vel: [], lim_acc: []}}}}'
+```
+
+### 5. 发布 Arm JNT 指令
+
+```shell
+ros2 topic pub --rate 10 /manip_ctrl \
+  hex_ros_msgs/msg/HexRosRoboManipCtrlStamped \
+  '{header: {stamp: {sec: 0, nanosec: 0}, frame_id: "arm_link"}, manip_ctrl: {arm_ctrl: {ctrl_mode: 2, jnt: {pos: [0.0, -1.3, 2.8, 0.0, 0.0, 0.0], vel: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], eff: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], lim_vel: [1.0], lim_acc: [50.0]}}, grip_ctrl: {ctrl_mode: 0, jnt: {pos: [], vel: [], eff: [], kp: [], kd: [], lim_vel: [], lim_acc: []}}}}'
+```
+
+### 6. 发布 Gripper JNT 指令
+
+以下示例适用于双关节 `gr100` 配置：
+
+```shell
+# Gripper position: {0.0, 0.0}
+ros2 topic pub --rate 10 /manip_ctrl \
+  hex_ros_msgs/msg/HexRosRoboManipCtrlStamped \
+  '{header: {stamp: {sec: 0, nanosec: 0}, frame_id: "arm_link"}, manip_ctrl: {arm_ctrl: {ctrl_mode: 2, jnt: {pos: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}, grip_ctrl: {ctrl_mode: 2, jnt: {pos: [0.0, 0.0], lim_vel: [0.5, 0.5]}}}}'
+
+# Gripper position: {0.5, 0.5}
+ros2 topic pub --rate 10 /manip_ctrl \
+  hex_ros_msgs/msg/HexRosRoboManipCtrlStamped \
+  '{header: {stamp: {sec: 0, nanosec: 0}, frame_id: "arm_link"}, manip_ctrl: {arm_ctrl: {ctrl_mode: 2, jnt: {pos: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}}, grip_ctrl: {ctrl_mode: 2, jnt: {pos: [0.5, 0.5], lim_vel: [0.5, 0.5]}}}}'
+```
+
+使用 `gp80` 或其他配置时，position 数组长度应与实际 gripper 关节数量一致。
+
+### 7. 清除控制
+
+向 `manip_ctrl` 发布 arm 和 gripper 均为 `NONE` 的空模式消息，以清除当前保留控制指令。具体嵌套字段应以当前 `hex_ros_msgs` 定义为准。
+
+---
+
+## 9. 常见问题
+
+### Arm 或 Gripper MIT 被拒绝
+
+这是当前设计：
+
+```text
+Arm:     JNT、EE
+Gripper: NONE、JNT、TAU
+```
+
+MIT 会输出 warning，不会自动转换为其他控制模式，也不会发布该控制命令。
+
+### EE 控制不可用
+
+检查：
+
+```shell
+ros2 param get /hex_ros_isaacsim_archer_y6 urdf_path
+```
+
+确认 `urdf_path` 指向有效的 Archer URDF。没有有效 URDF 时，JNT arm 控制仍可使用，但 EE 控制不可用。
+
+### Gripper TAU 力矩限制
+
+Gripper TAU 输出的最大绝对力矩为：
+
+```text
+40 N·m
+```
+
+### 没有收到 `/joint_states`
+
+检查：
+
+```shell
+ros2 topic info /joint_states -v
+ros2 topic echo /joint_states --once
+```
+
+如果没有实际消息，节点无法确认 Bridge 关节接口，不能正常发布命令。请检查 Isaac Sim ROS 2 Bridge、ROS domain、RMW、DDS discovery 和 Docker 网络配置。
+
+### 修改 Bridge 话题
+
+在 `archer_params.yaml` 中修改：
+
+```yaml
+joint_state_topic: "/my_isaac_joint_states"
+joint_command_topic: "/my_isaac_joint_command"
+```
+
+Isaac Sim Bridge 的状态发布和命令订阅也必须使用相同的话题名称。
+
+### `NONE` 的含义
+
+`NONE` 是空模式，用于清除当前保留控制指令。它不是一次新的 JNT、EE 或 TAU 控制。

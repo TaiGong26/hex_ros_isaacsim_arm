@@ -19,6 +19,7 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>hex_ros_urdf_archer_y6</exec_depend>
   <!-- hex_util_msg / hex_util_ros are pip dependencies (see README_CN.md) -->
 
   <export>
