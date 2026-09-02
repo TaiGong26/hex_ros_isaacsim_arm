@@ -10,7 +10,9 @@ def get_files(tar: str, src: str):
 
     data_files = []
     for path in all_paths:
-        if os.path.isfile(path):
+        if os.path.basename(path) == '__pycache__':
+            continue
+        if os.path.isfile(path) and not path.endswith('.pyc'):
             data_files.append((tar, [path]))
         elif os.path.isdir(path):
             sub_files = get_files(f'{tar}/{os.path.basename(path)}', path)
@@ -39,8 +41,6 @@ setup(
     entry_points={
         'console_scripts': [
             'isaacsim_archer_y6 = hex_ros_isaacsim_arm.isaacsim_archer_y6:main',
-            'mock_bridge = hex_ros_isaacsim_arm.mock_bridge:main',
-            'test_ctrl = hex_ros_isaacsim_arm.test_ctrl:main',
         ],
     },
 )
