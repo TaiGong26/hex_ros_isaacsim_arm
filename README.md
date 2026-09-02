@@ -154,24 +154,11 @@ The Isaac Sim side must enable the ROS 2 Bridge and provide `JointState` state p
 
 - [Isaac Sim ROS 2 Installation](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/install_ros.html)
 
-The ROS 2 node and Isaac Sim Bridge must use compatible communication settings:
+The Isaac Sim scene also requires the corresponding USD assets. Clone the USD asset repository and configure the asset path according to its documentation:
 
-- `ROS_DOMAIN_ID` should be the same;
-- `RMW_IMPLEMENTATION` should be the same or compatible;
-- DDS discovery must be able to reach both endpoints;
-- Docker containers must use a network that permits communication;
-- communication must not be restricted to each container's localhost interface.
-
-### URDF
-
-`urdf_path` is the runtime model path used by EE control.
-
-If the URDF path is empty or the model cannot be loaded:
-
-- the node logs a warning or error;
-- EE control is unavailable;
-- arm JNT control remains available because it does not require the EE model;
-- gripper control does not require the arm EE model.
+```shell
+git clone https://github.com/hexfellow/hex_isaac_usd.git
+```
 
 ---
 
@@ -198,7 +185,7 @@ colcon build --symlink-install
 source install/setup.bash --extend
 ```
 
-### 2. Start the Archer Bridge Node
+### 2. Start Node
 
 ```shell
 ros2 launch hex_ros_isaacsim_arm isaacsim_archer_y6.launch.py
@@ -281,7 +268,7 @@ ros2 param get /hex_ros_isaacsim_archer_y6 urdf_path
 
 Confirm that `urdf_path` points to a valid Archer URDF. Without a valid URDF, arm JNT control remains available, but EE control is unavailable.
 
-### Gripper TAU Torque Limit
+### Gripper TAU mode Torque Limit
 
 The maximum absolute gripper TAU output is:
 

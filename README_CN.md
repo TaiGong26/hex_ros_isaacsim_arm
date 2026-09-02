@@ -152,24 +152,11 @@ Isaac Sim 侧需要启用 ROS 2 Bridge，并创建与本包参数一致的 `Join
 
 - [Isaac Sim ROS 2 Installation](https://docs.isaacsim.omniverse.nvidia.com/latest/installation/install_ros.html)
 
-ROS 2 控制节点和 Isaac Sim Bridge 之间需要使用一致且可互通的通信配置：
+Isaac Sim 场景还需要对应的 USD 资源。请获取以下 USD 资源仓库，并按照仓库说明配置资产路径：
 
-- `ROS_DOMAIN_ID` 应一致；
-- `RMW_IMPLEMENTATION` 应一致或处于兼容配置；
-- DDS discovery 所需的网络必须可达；
-- 跨 Docker 容器运行时，应使用可互通的容器网络；
-- 不要将通信节点限制在各自容器的 localhost。
-
-### URDF
-
-`urdf_path` 是 EE 控制使用的运行时模型路径。
-
-当没有有效的 URDF 路径，或 URDF 模型加载失败时：
-
-- 节点会输出 warning 或 error；
-- EE 控制不可用；
-- JNT arm 控制不依赖该 EE 模型，可以继续使用；
-- 夹爪控制不依赖 arm 的 EE 模型。
+```shell
+git clone https://github.com/hexfellow/hex_isaac_usd.git
+```
 
 ---
 
@@ -196,7 +183,7 @@ colcon build --symlink-install
 source install/setup.bash --extend
 ```
 
-### 2. 启动 Archer Bridge 节点
+### 2. 启动节点
 
 ```shell
 ros2 launch hex_ros_isaacsim_arm isaacsim_archer_y6.launch.py
@@ -279,7 +266,7 @@ ros2 param get /hex_ros_isaacsim_archer_y6 urdf_path
 
 确认 `urdf_path` 指向有效的 Archer URDF。没有有效 URDF 时，JNT arm 控制仍可使用，但 EE 控制不可用。
 
-### Gripper TAU 力矩限制
+### Gripper TAU 模式力矩限制
 
 Gripper TAU 输出的最大绝对力矩为：
 
